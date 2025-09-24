@@ -64,8 +64,10 @@ export default function DragVerify() {
           {verified ? "Success ✓" : "Drag to confirm"}
         </div>
         <div
-          className={\`absolute top-0 left-0 w-16 h-16 rounded-full cursor-grab active:cursor-grabbing flex items-center justify-center font-bold shadow-lg transition-all duration-300 $\{verified ? "bg-green-500 text-white" : "bg-blue-600 text-white"}\`}
-          style={{ transform: \`translateX($\{offset}px)\` }}
+          className={`absolute top-0 left-0 w-16 h-16 rounded-full cursor-grab active:cursor-grabbing flex items-center justify-center font-bold shadow-lg transition-all duration-300 ${
+            verified ? "bg-green-500 text-white" : "bg-blue-600 text-white"
+          }`}
+          style={{ transform: `translateX(${offset}px)` }}
           onMouseDown={handleMouseDown}
           onTouchStart={handleMouseDown}
         >
