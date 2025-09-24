@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, CheckCircle, AlertCircle } from "lucide-react";
 
@@ -6,28 +6,37 @@ export default function DragVerification() {
   const [dragProgress, setDragProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [showFailure, setShowFailure] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
 
   // ✅ Env-based URLs
   const successUrl = import.meta.env.PUBLIC_SUCCESS_URL || "/";
   const failUrl = import.meta.env.PUBLIC_FAIL_URL || "/";
 
-  const handlePointerMove = useCallback(
-    (e) => {
-      if (!e.currentTarget.hasPointerCapture(e.pointerId) || isComplete) return;
+  const updateProgress = useCallback(
+    (clientX) => {
+      if (!containerRef.current || isComplete) return;
 
       const rect = containerRef.current.getBoundingClientRect();
       const maxWidth = rect.width - 60;
-      const newProgress = Math.min(
-        Math.max(0, e.clientX - rect.left - 30),
-        maxWidth
-      );
+      const newProgress = Math.min(Math.max(0, clientX - rect.left - 30), maxWidth);
       setDragProgress((newProgress / maxWidth) * 100);
     },
     [isComplete]
   );
 
+  const handlePointerMove = useCallback(
+    (e) => {
+      if (!isDragging) return;
+      updateProgress(e.clientX);
+    },
+    [isDragging, updateProgress]
+  );
+
   const handlePointerUp = useCallback(() => {
+    if (!isDragging) return;
+    setIsDragging(false);
+
     if (dragProgress > 85) {
       setIsComplete(true);
       setDragProgress(100);
@@ -46,12 +55,29 @@ export default function DragVerification() {
     } else {
       setDragProgress(0);
     }
-  }, [dragProgress, successUrl, failUrl]);
+  }, [dragProgress, isDragging, successUrl, failUrl]);
 
   const handlePointerDown = (e) => {
     if (isComplete) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsDragging(true);
+    updateProgress(e.clientX);
   };
+
+  // ✅ Attach document-level listeners (fix Safari issue)
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener("pointermove", handlePointerMove);
+      document.addEventListener("pointerup", handlePointerUp);
+    } else {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+    }
+
+    return () => {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [isDragging, handlePointerMove, handlePointerUp]);
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -92,12 +118,10 @@ export default function DragVerification() {
           }`}
           style={{
             left: `${(dragProgress / 100) * (100 - 15)}%`,
-            touchAction: "none", // ✅ Safari fix
+            touchAction: "none", // ✅ prevent Safari scrolling
           }}
           onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          animate={dragProgress > 0 && !isComplete ? { scale: 1.1 } : { scale: 1 }}
+          animate={isDragging && !isComplete ? { scale: 1.1 } : { scale: 1 }}
         >
           <AnimatePresence mode="wait">
             {isComplete ? (
