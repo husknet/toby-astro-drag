@@ -1,12 +1,16 @@
 import React, { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, ArrowRight, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowRight, CheckCircle, AlertCircle } from "lucide-react";
 
-export default function DragVerification({ onVerified, onFailed }) {
+export default function DragVerification() {
   const [dragProgress, setDragProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [showFailure, setShowFailure] = useState(false);
   const containerRef = useRef(null);
+
+  // ✅ Env-based URLs
+  const successUrl = import.meta.env.PUBLIC_SUCCESS_URL || "/";
+  const failUrl = import.meta.env.PUBLIC_FAIL_URL || "/";
 
   const handlePointerMove = useCallback(
     (e) => {
@@ -27,18 +31,22 @@ export default function DragVerification({ onVerified, onFailed }) {
     if (dragProgress > 85) {
       setIsComplete(true);
       setDragProgress(100);
-      setTimeout(() => onVerified(), 800);
+      setTimeout(() => {
+        window.location.href = successUrl;
+      }, 800);
     } else if (dragProgress > 0) {
       setShowFailure(true);
       setTimeout(() => {
         setDragProgress(0);
         setShowFailure(false);
-        setTimeout(() => onFailed(), 1000);
+        setTimeout(() => {
+          window.location.href = failUrl;
+        }, 1000);
       }, 1500);
     } else {
       setDragProgress(0);
     }
-  }, [dragProgress, onVerified, onFailed]);
+  }, [dragProgress, successUrl, failUrl]);
 
   const handlePointerDown = (e) => {
     if (isComplete) return;
@@ -59,6 +67,7 @@ export default function DragVerification({ onVerified, onFailed }) {
             : "border-gray-300 bg-gray-50"
         }`}
       >
+        {/* Progress bar */}
         <motion.div
           className={`absolute inset-0 transition-colors duration-300 ${
             isComplete
@@ -70,6 +79,7 @@ export default function DragVerification({ onVerified, onFailed }) {
           style={{ width: `${dragProgress}%` }}
         />
 
+        {/* Slider handle */}
         <motion.div
           className={`absolute top-2 left-2 w-12 h-12 rounded-xl cursor-grab active:cursor-grabbing transition-all duration-200 flex items-center justify-center ${
             isComplete
@@ -104,6 +114,7 @@ export default function DragVerification({ onVerified, onFailed }) {
           </AnimatePresence>
         </motion.div>
 
+        {/* Overlay text */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <motion.span
             className={`font-medium transition-all duration-300 ${
@@ -118,10 +129,10 @@ export default function DragVerification({ onVerified, onFailed }) {
             animate={{ opacity: isComplete || showFailure ? 0.8 : 1 }}
           >
             {isComplete
-              ? "Vérification terminée!"
+              ? "Verification complete!"
               : showFailure
-              ? "Vérification échouée"
-              : "Glissez pour vérifier que vous êtes humain"}
+              ? "Verification failed"
+              : "Slide to verify you are human"}
           </motion.span>
         </div>
       </div>
