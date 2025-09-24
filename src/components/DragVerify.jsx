@@ -10,11 +10,12 @@ export default function DragVerify() {
 
   const handlePointerDown = (e) => {
     if (verified) return;
-    e.target.setPointerCapture(e.pointerId);
+    e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e) => {
-    if (!e.target.hasPointerCapture(e.pointerId) || !sliderRef.current) return;
+    if (!e.currentTarget.hasPointerCapture(e.pointerId) || !sliderRef.current)
+      return;
     const rect = sliderRef.current.getBoundingClientRect();
     let newOffset = e.clientX - rect.left - 32;
     newOffset = Math.max(0, Math.min(newOffset, rect.width - 64));
@@ -27,7 +28,9 @@ export default function DragVerify() {
     const successThreshold = rect.width - 80;
     if (offset >= successThreshold) {
       setVerified(true);
-      setTimeout(() => (window.location.href = successUrl), 1500);
+      setTimeout(() => {
+        window.location.href = successUrl;
+      }, 800);
     } else {
       setOffset(0);
       alert("Verification failed. Redirecting...");
@@ -48,7 +51,10 @@ export default function DragVerify() {
           className={`absolute top-0 left-0 w-16 h-16 rounded-full cursor-grab active:cursor-grabbing flex items-center justify-center font-bold shadow-lg transition-all duration-300 ${
             verified ? "bg-green-500 text-white" : "bg-blue-600 text-white"
           }`}
-          style={{ transform: `translateX(${offset}px)` }}
+          style={{
+            transform: `translateX(${offset}px)`,
+            touchAction: "none", // ✅ crucial for Safari iOS
+          }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
