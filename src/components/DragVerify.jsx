@@ -4,37 +4,47 @@ import { ArrowRight, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function DragVerification() {
   const [dragProgress, setDragProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [showFailure, setShowFailure] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
 
   // ✅ Env-based URLs
   const successUrl = import.meta.env.PUBLIC_SUCCESS_URL || "/";
   const failUrl = import.meta.env.PUBLIC_FAIL_URL || "/";
 
-  const updateProgress = useCallback(
-    (clientX) => {
-      if (!containerRef.current || isComplete) return;
-
+  // --- Move handlers ---
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (!isDragging || isComplete) return;
       const rect = containerRef.current.getBoundingClientRect();
       const maxWidth = rect.width - 60;
-      const newProgress = Math.min(Math.max(0, clientX - rect.left - 30), maxWidth);
+      const newProgress = Math.min(
+        Math.max(0, e.clientX - rect.left - 30),
+        maxWidth
+      );
       setDragProgress((newProgress / maxWidth) * 100);
     },
-    [isComplete]
+    [isDragging, isComplete]
   );
 
-  const handlePointerMove = useCallback(
+  const handleTouchMove = useCallback(
     (e) => {
-      if (!isDragging) return;
-      updateProgress(e.clientX);
+      if (!isDragging || isComplete) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const maxWidth = rect.width - 60;
+      const touch = e.touches[0];
+      const newProgress = Math.min(
+        Math.max(0, touch.clientX - rect.left - 30),
+        maxWidth
+      );
+      setDragProgress((newProgress / maxWidth) * 100);
     },
-    [isDragging, updateProgress]
+    [isDragging, isComplete]
   );
 
-  const handlePointerUp = useCallback(() => {
-    if (!isDragging) return;
+  // --- Release handler ---
+  const handleRelease = useCallback(() => {
     setIsDragging(false);
 
     if (dragProgress > 85) {
@@ -55,29 +65,36 @@ export default function DragVerification() {
     } else {
       setDragProgress(0);
     }
-  }, [dragProgress, isDragging, successUrl, failUrl]);
+  }, [dragProgress, successUrl, failUrl]);
 
-  const handlePointerDown = (e) => {
+  // --- Start handlers ---
+  const handleMouseDown = (e) => {
     if (isComplete) return;
     setIsDragging(true);
-    updateProgress(e.clientX);
+    e.preventDefault();
   };
 
-  // ✅ Attach document-level listeners (fix Safari issue)
+  const handleTouchStart = (e) => {
+    if (isComplete) return;
+    setIsDragging(true);
+    e.preventDefault();
+  };
+
+  // --- Attach listeners to document ---
   useEffect(() => {
     if (isDragging) {
-      document.addEventListener("pointermove", handlePointerMove);
-      document.addEventListener("pointerup", handlePointerUp);
-    } else {
-      document.removeEventListener("pointermove", handlePointerMove);
-      document.removeEventListener("pointerup", handlePointerUp);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleRelease);
+      document.addEventListener("touchmove", handleTouchMove);
+      document.addEventListener("touchend", handleRelease);
     }
-
     return () => {
-      document.removeEventListener("pointermove", handlePointerMove);
-      document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleRelease);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleRelease);
     };
-  }, [isDragging, handlePointerMove, handlePointerUp]);
+  }, [isDragging, handleMouseMove, handleTouchMove, handleRelease]);
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -88,7 +105,7 @@ export default function DragVerification() {
             ? "border-emerald-400 bg-emerald-50"
             : showFailure
             ? "border-red-400 bg-red-50"
-            : dragProgress > 0
+            : isDragging
             ? "border-blue-400 bg-blue-50"
             : "border-gray-300 bg-gray-50"
         }`}
@@ -112,7 +129,7 @@ export default function DragVerification() {
               ? "bg-emerald-500 shadow-lg shadow-emerald-500/25"
               : showFailure
               ? "bg-red-500 shadow-lg shadow-red-500/25"
-              : dragProgress > 0
+              : isDragging
               ? "bg-blue-500 shadow-lg shadow-blue-500/25"
               : "bg-white shadow-lg border border-gray-200"
           }`}
@@ -120,7 +137,8 @@ export default function DragVerification() {
             left: `${(dragProgress / 100) * (100 - 15)}%`,
             touchAction: "none", // ✅ prevent Safari scrolling
           }}
-          onPointerDown={handlePointerDown}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
           animate={isDragging && !isComplete ? { scale: 1.1 } : { scale: 1 }}
         >
           <AnimatePresence mode="wait">
